@@ -16,6 +16,7 @@ import com.snappydb.SnappydbException;
 import org.apache.thrift.TException;
 import org.sharesound.android.rpc.Services;
 import org.sharesound.android.rpc.account.AccountService;
+import org.sharesound.android.rpc.account.ProfileResult;
 import org.sharesound.android.rpc.shared.Session;
 
 public class AccountServiceActivity extends AppCompatActivity {
@@ -87,8 +88,6 @@ public class AccountServiceActivity extends AppCompatActivity {
 
                     return client.registerAccount(email, username, password);
                 }catch (TException e){
-                    Toast.makeText(AccountServiceActivity.this, "Error from RPC",
-                            Toast.LENGTH_LONG).show();
                     Log.e(TAG, "Got Thrift Exception");
                     e.printStackTrace();
                     return null;
@@ -132,8 +131,6 @@ public class AccountServiceActivity extends AppCompatActivity {
 
                     return client.login(email, password);
                 }catch (TException e){
-                    Toast.makeText(AccountServiceActivity.this, "Error from RPC",
-                            Toast.LENGTH_LONG).show();
                     Log.e(TAG, "Got Thrift Exception");
                     e.printStackTrace();
                     return null;
@@ -158,6 +155,57 @@ public class AccountServiceActivity extends AppCompatActivity {
                     Toast.makeText(AccountServiceActivity.this, "Error from RPC result",
                             Toast.LENGTH_LONG).show();
                     Log.e(TAG, "Session null");
+                }
+            }
+        }).execute();
+    }
+
+    public void onGetProfileClick(View v){
+        (new AsyncTask<Void,Void,ProfileResult>(){
+
+            @Override
+            protected ProfileResult doInBackground(Void... params) {
+                AccountService.Client client = null;
+                try{
+                    client = Services.getAccountService(mAddress, mPort);
+
+                    //Check whether login
+                    try{
+                        String auth_token = mDb.get(Shared.SESSION_DB_KEY);
+                        Session session = new Session();
+                        session.auth_token = auth_token;
+
+                        return client.getProfile(session);
+
+                    }catch (SnappydbException e){
+                        return null;
+                    }
+                }catch (TException e){
+                    Log.e(TAG, "Got Thrift Exception");
+                    e.printStackTrace();
+                    return null;
+                }finally {
+                    Services.closeTransport(client);
+                }
+            }
+
+            @Override
+            protected void onPostExecute(ProfileResult result) {
+                if(result != null){
+                    String displayStr = "Email: " + result.getEmail() + "\n";
+                    displayStr += ("Username: " + result.getUsername());
+                    Toast.makeText(AccountServiceActivity.this, displayStr, Toast.LENGTH_LONG).show();
+
+                    //Store session
+                    try{
+                        mDb.put(Shared.SESSION_DB_KEY, result.getSession().auth_token);
+                    }catch (SnappydbException e){
+                        e.printStackTrace();
+                    }
+                }else{
+                    Toast.makeText(AccountServiceActivity.this, "RPC result error. Perhaps login first?",
+                            Toast.LENGTH_LONG).show();
+                    Log.e(TAG, "ProfileResult null");
                 }
             }
         }).execute();
