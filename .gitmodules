@@ -1,0 +1,3 @@
+[submodule "rpc"]
+	path = rpc
+	url = https://github.com/ShareSound/Android-RPC-Module.git
